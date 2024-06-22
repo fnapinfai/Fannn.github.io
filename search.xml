@@ -4,6 +4,33 @@
   
     
     <entry>
+      <title>Fastjson的原理</title>
+      <link href="/2024/06/22/Fastjson%E7%9A%84%E5%8E%9F%E7%90%86/"/>
+      <url>/2024/06/22/Fastjson%E7%9A%84%E5%8E%9F%E7%90%86/</url>
+      
+        <content type="html"><![CDATA[<p>是什么</p><p>json：Json是一种轻量级的数据交换格式，应该在一个程序员的开发生涯中是常接触的。简洁和清晰的层次结构使得 JSON 成为理想的数据交换语言。 易于人阅读和编写，同时也易于机器解析和生成，并有效地提升网络传输效率。</p><p>例子：</p><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&#123;</span><br><span class="line"></span><br><span class="line">​        &quot;name&quot;:&quot;BossFrank&quot;,</span><br><span class="line"></span><br><span class="line">​        &quot;age&quot;:23,</span><br><span class="line"></span><br><span class="line">​        &quot;media&quot;:[&quot;CSDN&quot;,&quot;bilibili&quot;,&quot;Github&quot;]</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>Fastjson：是一个Java库，可用于将Java对象转换为其JSON表示。它还可用于将JSON字符串转换为等效的Java对象。<strong>Fastjson可以处理任意Java对象，包括您没有源代码的预先存在的对象</strong>。</p><p>Fastjson漏洞的形成</p><p><strong>fastjson的漏洞本质还是一个java的<a href="https://so.csdn.net/so/search?q=%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E6%BC%8F%E6%B4%9E&spm=1001.2101.3001.7020">反序列化漏洞</a>，由于引进了AutoType功能，fastjson在对json字符串反序列化的时候，会读取到@type的内容，将json内容反序列化为java对象并调用这个类的setter方法。</strong></p><p><strong>fastjson在序列化以及反序列化的过程中并没有使用Java自带的序列化机制，而是自定义了一套机制</strong></p><p>对于JSON框架来说，想要把一个Java对象转换成字符串有两种方法</p><p>1.基于setter&#x2F;getter</p><p>2.基于属性（AutoType）</p><p>基于setter&#x2F;getter</p><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">class Apple implements Fruit &#123;</span><br><span class="line">    private Big_Decimal price;</span><br><span class="line">    //省略 setter/getter、toString等</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">class iphone implements Fruit &#123;</span><br><span class="line">    private Big_Decimal price;</span><br><span class="line">    //省略 setter/getter、toString等</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>当一个类只有一个接口的时候，将这个类的对象序列化的时候，就会将子类抹去，只保留接口的类型，最后导致反序列化时无法得到原始类型。本例中，将两个json再反序列化生成java对象的时候，无法区分原始类是否是别的子类。</p><p>基于AutoType</p><p>为了解决上述问题： fastjson引入了基于属性（AutoType），即在序列化的时候，先把原始类型记录下来<br>{ “fruit”:{ “@type”:”com.hollis.lab.fastjson.test.Apple”, “price”:0.5 } }</p><p>引入AutoType后，iphone类对象序列化为json格式后为：</p><figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">&#123; &quot;fruit&quot;:&#123; &quot;@type&quot;:&quot;com.hollis.lab.fastjson.test.iphone&quot;, &quot;price&quot;:5000 &#125; &#125;</span><br></pre></td></tr></table></figure><p>漏洞原理</p><p>使用AutoType功能进行序列号的JSON字符会带有一个@type来标记其字符的原始类型，在反序列化的时候会读取这个@type，来试图把JSON内容反序列化到对象，并且会调用这个库的setter或者getter方法，然而，@type的类有可能被恶意构造，只需要合理构造一个JSON，使用@type指定一个想要的攻击类库就可以实现攻击。</p><p>漏洞利用流程</p><p>攻击者（我们）访问存在fastjson漏洞的目标靶机网站，通过burpsuite抓包改包，以json格式添加com.sun.rowset.JdbcRowSetImpl恶意类信息发送给目标机。<br>存在漏洞的靶机对json反序列化时候，会加载执行我们构造的恶意信息(访问rmi服务器)，靶机服务器就会向rmi服务器请求待执行的命令。也就是靶机服务器问rmi服务器，（靶机服务器）需要执行什么命令啊？<br>rmi 服务器请求加载远程机器的class（这个远程机器是我们搭建好的恶意站点，提前将漏洞利用的代码编译得到.class文件，并上传至恶意站点），得到攻击者（我们）构造好的命令（ping dnslog或者创建文件或者反弹shell啥的）rmi将远程加载得到的class（恶意代码），作为响应返回给靶机服务器。<br>靶机服务器执行了恶意代码，被攻击者成功利用。<br><img src="/2024/06/22/Fastjson%E7%9A%84%E5%8E%9F%E7%90%86/Users\31055\Desktop\fastjosn\1719025936008.png" alt="1719025936008"></p><p>拓展：</p><p>fastjson不出网怎么利用</p><p>apache-BCEL，直接传入字节码不需要出网就可执行恶意代码但是需要引入tomcat的依赖，但在实际攻击中还算是比较常见的。</p><p>fastjson不出网利用<br>fastjson≤1.2.24</p><p>条件:BasicDataSource只需要有dbcp或tomcat-dbcp的依赖即可，dbcp即数据库连接池，在java中用于管理数据库连接，还是挺常见的。</p><p>参考链接：</p><p><a href="https://blog.csdn.net/Bossfrank?type=blog">Boss_frank-CSDN博客</a></p><p>[fastjson反序列化漏洞演示加详细讲解加原理_哔哩哔哩_bilibili</p><p><a href="https://blog.csdn.net/weixin_49248030/article/details/127989449">fastjson-BCEL不出网打法原理分析_fastjson不出网是什么-CSDN博客</a>](<a href="https://www.bilibili.com/video/BV1Ab4y1d7w1/?vd_source=e52c0be348f431bd52ecb6f73987ebbd">https://www.bilibili.com/video/BV1Ab4y1d7w1/?vd_source=e52c0be348f431bd52ecb6f73987ebbd</a>)</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> 学习 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 框架漏洞 </tag>
+            
+            <tag> fastjson </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>记一次cnvd渗透</title>
       <link href="/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/"/>
       <url>/2024/06/05/%E8%AE%B0%E4%B8%80%E6%AC%A1cnvd%E6%B8%97%E9%80%8F/</url>
